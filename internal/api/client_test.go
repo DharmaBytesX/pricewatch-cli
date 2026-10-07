@@ -26,7 +26,7 @@ func TestRequestsCarryTheTokenAndUserAgent(t *testing.T) {
 	if got.Method != http.MethodPost || got.URL.EscapedPath() != "/api/v1/catalog/cat%201/track" {
 		t.Fatalf("%s %s", got.Method, got.URL.EscapedPath())
 	}
-	if got.Header.Get("Authorization") != "Bearer pwt_x" || got.Header.Get("User-Agent") != "pricewatch-cli/test" ||
+	if got.Header.Get(TokenHeader) != "pwt_x" || got.Header.Get("Authorization") != "" || got.Header.Get("User-Agent") != "pricewatch-cli/test" ||
 		got.Header.Get("Content-Type") != "application/json" {
 		t.Fatalf("headers %v", got.Header)
 	}
@@ -45,6 +45,7 @@ func TestErrors(t *testing.T) {
 		{403, `{"error":"this API token does not have the products:write scope","code":"insufficient_scope"}`,
 			CodeInsufficientScope, "this API token does not have the products:write scope"},
 		{500, `<html>oops</html>`, "", "the server answered 500 Internal Server Error"},
+		{401, `invalid or missing authentication`, "", " refused the request before it reached Pricewatch (401 Unauthorized): the site may be private, or need a sign-in"},
 	}
 	for _, c := range cases {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -53,7 +54,8 @@ func TestErrors(t *testing.T) {
 		}))
 		_, err := New(srv.URL, "pwt_x", "ua", nil).Products(context.Background())
 		srv.Close()
-		if StatusOf(err) != c.status || CodeOf(err) != c.wantCode || err.Error() != c.wantMessage {
+		if StatusOf(err) != c.status || CodeOf(err) != c.wantCode || !strings.HasSuffix(err.Error(), c.wantMessage) ||
+			FromPricewatch(err) != (c.wantCode != "") {
 			t.Errorf("status %d: got %d %q %q", c.status, StatusOf(err), CodeOf(err), err)
 		}
 	}

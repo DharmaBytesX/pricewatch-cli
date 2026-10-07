@@ -203,6 +203,8 @@ func describe(err error) (int, string) {
 		return ee.code, ee.msg
 	}
 	switch status, code := api.StatusOf(err), api.CodeOf(err); {
+	case !api.FromPricewatch(err) && status != 0:
+		return ExitFailure, err.Error()
 	case status == http.StatusUnauthorized:
 		return ExitDenied, err.Error() + `: create a token on Pricewatch's Settings page, then run "pricewatch auth login"`
 	case status == http.StatusForbidden && code == api.CodeInsufficientScope:

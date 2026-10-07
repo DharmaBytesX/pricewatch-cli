@@ -163,9 +163,10 @@ Linux and macOS, pricewatch writes it readable by your user only (mode
 the command lines of running programs] Give the token with
 `pricewatch auth login` or `PRICEWATCH_TOKEN` rather than `--token`.
 
-pricewatch reaches Pricewatch at its website address. The site must answer
-without a sign-in in front of it: when it redirects requests to a login page,
-pricewatch stops with "the server redirected the request to …".
+pricewatch reaches Pricewatch at its website address, and sends the token
+in the `X-Pricewatch-Token` header. The site must answer without a sign-in
+in front of it; otherwise pricewatch stops with "the server redirected the
+request to …" or "… refused the request before it reached Pricewatch".
 
 ## Exit codes
 

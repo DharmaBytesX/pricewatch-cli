@@ -418,6 +418,22 @@ func TestPrivateSiteRedirect(t *testing.T) {
 	mustContain(t, errOut, "redirected the request to https://login.example/?next=/", "the site is public")
 }
 
+func TestProxyInFrontRefuses(t *testing.T) {
+	// exe.dev answers a private site's requests that carry credentials.
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "invalid or missing authentication", http.StatusUnauthorized)
+	}))
+	defer proxy.Close()
+	h := newHarness(t).signedIn(fakeapi.WriteToken)
+	h.env[config.EnvURL] = proxy.URL
+	_, errOut, code := h.run("prices")
+	expect(t, code, ExitFailure, "", errOut)
+	mustContain(t, errOut, "refused the request before it reached Pricewatch", "private")
+	if strings.Contains(errOut, "create a token") {
+		t.Fatalf("suggests a new token for a proxy refusal: %s", errOut)
+	}
+}
+
 func TestVersion(t *testing.T) {
 	out, errOut, code := newHarness(t).run("version")
 	expect(t, code, ExitOK, out, errOut)

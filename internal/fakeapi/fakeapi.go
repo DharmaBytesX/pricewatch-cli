@@ -92,7 +92,12 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	raw, _ := json.Marshal(body)
 	s.Requests = append(s.Requests, strings.TrimSpace(r.Method+" "+r.URL.RequestURI()+" "+strings.TrimPrefix(string(raw), "null")))
 
-	token, ok := s.Tokens[strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")]
+	// Like Pricewatch: the token header, or Authorization: Bearer.
+	credential := r.Header.Get(api.TokenHeader)
+	if credential == "" {
+		credential = strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	}
+	token, ok := s.Tokens[credential]
 	if !ok {
 		reply(w, http.StatusUnauthorized, map[string]string{"error": "invalid, expired or revoked API token"})
 		return
