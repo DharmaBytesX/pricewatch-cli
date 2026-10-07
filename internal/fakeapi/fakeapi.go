@@ -155,10 +155,13 @@ func (s *Server) allowed(w http.ResponseWriter, t Token, method string) bool {
 }
 
 func (s *Server) searchCatalog(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
+	q, ptype := r.URL.Query().Get("q"), r.URL.Query().Get("type")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	out := []api.CatalogProduct{}
 	for _, c := range s.Catalog {
+		if ptype != "" && c.Type != ptype {
+			continue
+		}
 		if len(c.Offers) > 0 && match.AllWords(c.Name, q) && (limit == 0 || len(out) < limit) {
 			out = append(out, c)
 		}

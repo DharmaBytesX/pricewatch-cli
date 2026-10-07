@@ -119,6 +119,7 @@ page, then run "pricewatch auth login".`,
 	root.AddCommand(
 		newAuthCommand(app, g),
 		newPricesCommand(app, g),
+		newSearchCommand(app, g),
 		newAddCommand(app, g),
 		newVersionCommand(app),
 	)

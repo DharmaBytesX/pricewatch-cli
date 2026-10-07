@@ -147,7 +147,7 @@ func (app *App) findInCatalog(ctx context.Context, client *api.Client, o *addOpt
 	if o.search {
 		return nil, nil
 	}
-	found, err := client.SearchCatalog(ctx, name, 10)
+	found, err := client.SearchCatalog(ctx, name, "", 10)
 	if err != nil {
 		return nil, err
 	}

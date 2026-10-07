@@ -25,6 +25,7 @@ Contents:
 - [Install](#install)
 - [Sign in with an API token](#sign-in-with-an-api-token)
 - [Show the prices of your products](#show-the-prices-of-your-products)
+- [Search the catalog](#search-the-catalog)
 - [Add a product](#add-a-product)
 - [Settings: address, token, configuration file](#settings-address-token-configuration-file)
 - [Exit codes](#exit-codes)
@@ -70,7 +71,7 @@ In a script, give the token on standard input:
 
 | Access on the Settings page | Scope | What the token can do |
 | --- | --- | --- |
-| Read | `products:read` | `pricewatch prices`, `pricewatch auth status` |
+| Read | `products:read` | `pricewatch prices`, `pricewatch search`, `pricewatch auth status` |
 | Read and add | `products:write` | also `pricewatch add` |
 
 `pricewatch auth status` shows the account, the token and the address in
@@ -112,6 +113,25 @@ the stores not checked yet ("checking…"); then paused ones. `--in-stock`
 keeps the stores that have the product in stock. Prices are the latest the
 stores showed: your Pricewatch plan sets how often they are checked (every
 5 minutes on Free, every minute on Premium, every 5 seconds on Ultimate).
+
+## Search the catalog
+
+`pricewatch search QUERY` lists the products of Pricewatch's catalog whose
+name has every word of QUERY, best match first, with the number of stores
+that sell each one; ✓ marks the products you track. `--type` keeps one
+product type (`video_game`, `console`, `smartphone`, `laptop`, `tcg`,
+`other`), `--limit` sets how many are listed (20 by default, 100 at most).
+Without QUERY, it lists the catalog.
+
+```console
+$ pricewatch search "iphone 13 pro"
+PRODUCT                   TYPE   STORES  TRACKED  ID
+iPhone 13 Pro 128 Go      Phone  7                28dfbce9-bd80-4280-a37b-1806a26a1efd
+iPhone 13 Pro 256 Go      Phone  6                ff1862ef-cf05-4f44-948f-d8694e54e921
+iPhone 13 Pro Max 128 Go  Phone  7                064b9333-1178-4060-a68d-0faf97da81de
+```
+
+`pricewatch add --id ID` tracks a result.
 
 ## Add a product
 

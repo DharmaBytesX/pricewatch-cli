@@ -67,9 +67,12 @@ func (c *Client) Products(ctx context.Context) ([]Product, error) {
 }
 
 // SearchCatalog lists the catalog products whose name has every word of
-// query, best match first.
-func (c *Client) SearchCatalog(ctx context.Context, query string, limit int) ([]CatalogProduct, error) {
+// query, best match first. ptype keeps one product type; "" any.
+func (c *Client) SearchCatalog(ctx context.Context, query, ptype string, limit int) ([]CatalogProduct, error) {
 	q := url.Values{"q": {query}, "limit": {strconv.Itoa(limit)}}
+	if ptype != "" {
+		q.Set("type", ptype)
+	}
 	var out []CatalogProduct
 	return out, c.do(ctx, http.MethodGet, "/catalog?"+q.Encode(), nil, &out)
 }

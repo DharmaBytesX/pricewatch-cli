@@ -387,6 +387,64 @@ func TestAddRefusals(t *testing.T) {
 	mustContain(t, errOut, "The Free plan tracks 1 product")
 }
 
+// ---------------------------------------------------------------- search
+
+func TestSearch(t *testing.T) {
+	h := newHarness(t).signedIn(fakeapi.ReadToken) // reading is enough
+	seedCatalog(h.srv)
+	h.srv.Products = []api.Product{{ID: "p1", Name: "Elden Ring (PS5)"}}
+
+	out, errOut, code := h.run("search", "elden", "ring")
+	expect(t, code, ExitOK, out, errOut)
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("search:\n%s", out)
+	}
+	mustContain(t, lines[0], "PRODUCT", "TYPE", "STORES", "TRACKED", "ID")
+	mustContain(t, lines[1], "Elden Ring (PS5)", "Game", "2", "✓", "cat-elden-ps5")
+	mustContain(t, lines[2], "Elden Ring (Xbox Series X)", "cat-elden-xsx")
+	if strings.Contains(lines[2], "✓") {
+		t.Fatalf("an untracked product is marked: %s", lines[2])
+	}
+	mustContain(t, lastGet(h.srv, "/api/v1/catalog"), "limit=20", "q=elden+ring")
+
+	out, _, code = h.run("search", "--type", "smartphone", "--limit", "5")
+	expect(t, code, ExitOK, out, "")
+	mustContain(t, out, "iPhone 13 128 Go", "Phone")
+	if strings.Contains(out, "Elden") {
+		t.Fatalf("--type smartphone lists games:\n%s", out)
+	}
+	mustContain(t, lastGet(h.srv, "/api/v1/catalog"), "type=smartphone", "limit=5")
+
+	out, _, code = h.run("search", "iphone", "--json")
+	expect(t, code, ExitOK, out, "")
+	var got []api.CatalogProduct
+	if err := json.Unmarshal([]byte(out), &got); err != nil || len(got) != 1 || got[0].ID != "cat-iphone" {
+		t.Fatalf("JSON %v:\n%s", err, out)
+	}
+
+	_, errOut, code = h.run("search", "zelda")
+	expect(t, code, ExitNotFound, "", errOut)
+	mustContain(t, errOut, `no catalog product matches “zelda”; pricewatch add "zelda" searches the stores for it`)
+
+	for _, args := range [][]string{{"search", "--type", "toaster"}, {"search", "--limit", "0"}, {"search", "--limit", "101"}} {
+		if _, errOut, code := h.run(args...); code != ExitUsage {
+			t.Errorf("%v: exit code %d (%s)", args, code, errOut)
+		}
+	}
+}
+
+// lastGet returns the last GET request to path the server received.
+func lastGet(srv *fakeapi.Server, path string) string {
+	log := srv.Log()
+	for i := len(log) - 1; i >= 0; i-- {
+		if strings.HasPrefix(log[i], "GET "+path) {
+			return log[i]
+		}
+	}
+	return ""
+}
+
 func TestUsageErrors(t *testing.T) {
 	h := newHarness(t).signedIn(fakeapi.WriteToken)
 	for _, args := range [][]string{
