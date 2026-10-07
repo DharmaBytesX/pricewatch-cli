@@ -126,9 +126,10 @@ Without QUERY, it lists the catalog.
 ```console
 $ pricewatch search "iphone 13 pro"
 PRODUCT                   TYPE   STORES  TRACKED  ID
-iPhone 13 Pro 128 Go      Phone  7                28dfbce9-bd80-4280-a37b-1806a26a1efd
+iPhone 13 Pro 128 Go      Phone  5                28dfbce9-bd80-4280-a37b-1806a26a1efd
 iPhone 13 Pro 256 Go      Phone  6                ff1862ef-cf05-4f44-948f-d8694e54e921
-iPhone 13 Pro Max 128 Go  Phone  7                064b9333-1178-4060-a68d-0faf97da81de
+iPhone 13 Pro Max 128 Go  Phone  5                064b9333-1178-4060-a68d-0faf97da81de
+iPhone 13 Pro Max 256 Go  Phone  6                52299ad9-cc00-426e-96bc-784796154caf
 ```
 
 `pricewatch add --id ID` tracks a result.
