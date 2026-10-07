@@ -434,6 +434,75 @@ func TestSearch(t *testing.T) {
 	}
 }
 
+func TestRemove(t *testing.T) {
+	h := newHarness(t).signedIn(fakeapi.WriteToken)
+	seedProducts(h.srv) // "iPhone 13 128 Go" (11111111-aaaa), "Pokémon Écarlate (Switch)" (22222222-bbbb)
+	ids := func() (out []string) {
+		for _, p := range h.srv.Products {
+			out = append(out, p.ID)
+		}
+		return out
+	}
+
+	// Without a terminal, --yes is needed.
+	_, errOut, code := h.run("remove", "iphone")
+	expect(t, code, ExitUsage, "", errOut)
+	mustContain(t, errOut, "add --yes")
+
+	// In a terminal: asked, and "n" removes nothing.
+	h.terminal, h.stdin = true, "n\n"
+	out, errOut, code := h.run("remove", "iphone 13")
+	expect(t, code, ExitOK, out, errOut)
+	mustContain(t, errOut, "Stop tracking “iPhone 13 128 Go” (4 stores) and delete its price history? [y/N]")
+	mustContain(t, out, "Nothing removed.")
+	if len(ids()) != 2 {
+		t.Fatalf("removed after no: %v", ids())
+	}
+
+	// "y" removes it.
+	h.stdin = "y\n"
+	out, errOut, code = h.run("rm", "iphone 13")
+	expect(t, code, ExitOK, out, errOut)
+	mustContain(t, out, "Stopped tracking iPhone 13 128 Go.")
+	if got := ids(); len(got) != 1 || got[0] != "22222222-bbbb" {
+		t.Fatalf("products left: %v", got)
+	}
+
+	// By ID, with --yes, without a terminal.
+	h.terminal = false
+	out, errOut, code = h.run("untrack", "22222222", "--yes")
+	expect(t, code, ExitOK, out, errOut)
+	if len(ids()) != 0 {
+		t.Fatalf("products left: %v", ids())
+	}
+
+	_, errOut, code = h.run("remove", "zelda", "--yes")
+	expect(t, code, ExitNotFound, "", errOut)
+	mustContain(t, errOut, "you track no product matching “zelda”")
+}
+
+func TestRemoveSeveralMatches(t *testing.T) {
+	h := newHarness(t).signedIn(fakeapi.WriteToken)
+	h.srv.Products = []api.Product{
+		{ID: "p-elden-ps5", Name: "Elden Ring (PS5)"},
+		{ID: "p-elden-xsx", Name: "Elden Ring (Xbox Series X)"},
+	}
+	_, errOut, code := h.run("remove", "elden ring", "--yes")
+	expect(t, code, ExitUsage, "", errOut)
+	mustContain(t, errOut, "“elden ring” matches 2 of your products:", "Elden Ring (PS5)  (p-elden-ps5)", "exact name or the ID")
+	// The exact name picks one.
+	out, errOut, code := h.run("remove", "elden ring (ps5)", "--yes")
+	expect(t, code, ExitOK, out, errOut)
+	if len(h.srv.Products) != 1 || h.srv.Products[0].ID != "p-elden-xsx" {
+		t.Fatalf("products left: %+v", h.srv.Products)
+	}
+	// A read-only token cannot remove.
+	h.signedIn(fakeapi.ReadToken)
+	_, errOut, code = h.run("remove", "elden", "--yes")
+	expect(t, code, ExitDenied, "", errOut)
+	mustContain(t, errOut, "products:write")
+}
+
 // lastGet returns the last GET request to path the server received.
 func lastGet(srv *fakeapi.Server, path string) string {
 	log := srv.Log()

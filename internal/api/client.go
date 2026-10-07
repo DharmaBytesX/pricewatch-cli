@@ -83,6 +83,11 @@ func (c *Client) Track(ctx context.Context, catalogID string, req TrackRequest) 
 	return &out, c.do(ctx, http.MethodPost, "/catalog/"+url.PathEscape(catalogID)+"/track", req, &out)
 }
 
+// DeleteProduct stops tracking a product and deletes its price history.
+func (c *Client) DeleteProduct(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/products/"+url.PathEscape(id), nil, nil)
+}
+
 // StartDiscovery asks for a product to be found in every store. ptype may
 // be empty: the server guesses it from the name.
 func (c *Client) StartDiscovery(ctx context.Context, name, ptype string) (*DiscoveryStart, error) {

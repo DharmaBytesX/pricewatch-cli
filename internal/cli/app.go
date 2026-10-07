@@ -121,6 +121,7 @@ page, then run "pricewatch auth login".`,
 		newPricesCommand(app, g),
 		newSearchCommand(app, g),
 		newAddCommand(app, g),
+		newRemoveCommand(app, g),
 		newVersionCommand(app),
 	)
 	return root

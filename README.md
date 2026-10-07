@@ -27,6 +27,7 @@ Contents:
 - [Show the prices of your products](#show-the-prices-of-your-products)
 - [Search the catalog](#search-the-catalog)
 - [Add a product](#add-a-product)
+- [Stop tracking a product](#stop-tracking-a-product)
 - [Settings: address, token, configuration file](#settings-address-token-configuration-file)
 - [Exit codes](#exit-codes)
 - [Command reference](docs/commands/pricewatch.md)
@@ -72,7 +73,7 @@ In a script, give the token on standard input:
 | Access on the Settings page | Scope | What the token can do |
 | --- | --- | --- |
 | Read | `products:read` | `pricewatch prices`, `pricewatch search`, `pricewatch auth status` |
-| Read and add | `products:write` | also `pricewatch add` |
+| Read and add | `products:write` | also `pricewatch add` and `pricewatch remove` |
 
 `pricewatch auth status` shows the account, the token and the address in
 use. `pricewatch auth logout` removes the saved token; the token works until
@@ -164,6 +165,20 @@ pricewatch add "Astro Bot PS5" --wait
 | `--json` | prints the tracked product as JSON |
 
 Your plan limits how many products you track: the Free plan tracks 1.
+
+## Stop tracking a product
+
+```sh
+pricewatch remove "elden ring ps5"
+pricewatch remove 0b6f2c1e --yes
+```
+
+`pricewatch remove PRODUCT` (also `rm` or `untrack`) stops tracking one of
+your products and deletes its price history. PRODUCT works as for `prices`:
+words of the name, or the ID or its first 8 characters or more. When several
+of your products match, pricewatch lists them and stops (exit code 2), unless
+one is named exactly PRODUCT. It asks before removing; without a terminal,
+`--yes` confirms.
 
 ## Settings: address, token, configuration file
 

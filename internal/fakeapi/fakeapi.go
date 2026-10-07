@@ -124,6 +124,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		s.track(w, strings.TrimSuffix(strings.TrimPrefix(path, "/catalog/"), "/track"), body)
 	case route == "POST /discoveries":
 		s.startDiscovery(w, body)
+	case r.Method == http.MethodDelete && strings.HasPrefix(path, "/products/"):
+		s.remove(w, strings.TrimPrefix(path, "/products/"))
 	case r.Method == http.MethodGet && strings.HasPrefix(path, "/discoveries/"):
 		s.discovery(w, strings.TrimPrefix(path, "/discoveries/"))
 	default:
@@ -240,6 +242,17 @@ func (s *Server) discovery(w http.ResponseWriter, id string) {
 		}
 	}
 	reply(w, http.StatusOK, out)
+}
+
+func (s *Server) remove(w http.ResponseWriter, id string) {
+	for i, p := range s.Products {
+		if p.ID == id {
+			s.Products = append(s.Products[:i], s.Products[i+1:]...)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+	}
+	reply(w, http.StatusNotFound, map[string]string{"error": "product not found"})
 }
 
 // DiscoveryType returns the type the last discovery of name asked for.

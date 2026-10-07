@@ -22,6 +22,7 @@ page, then run "pricewatch auth login".
 * [pricewatch auth](pricewatch_auth.md)	 - Sign in with an API token, and check which one is used
 * [pricewatch completion](pricewatch_completion.md)	 - Generate the autocompletion script for the specified shell
 * [pricewatch prices](pricewatch_prices.md)	 - Show the prices and stock of your tracked products
+* [pricewatch remove](pricewatch_remove.md)	 - Stop tracking a product and delete its price history
 * [pricewatch search](pricewatch_search.md)	 - Search Pricewatch's catalog
 * [pricewatch version](pricewatch_version.md)	 - Show the version of pricewatch
 
