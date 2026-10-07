@@ -155,8 +155,9 @@ Each setting comes from the first of these that is set:
 
 The configuration file is `pricewatch/config.json` in the user configuration
 folder (`~/.config` on Linux, `~/Library/Application Support` on macOS,
-`%AppData%` on Windows), or the file named by `PRICEWATCH_CONFIG`.
-pricewatch writes it readable by your user only (mode 600).
+`%AppData%` on Windows), or the file named by `PRICEWATCH_CONFIG`. On
+Linux and macOS, pricewatch writes it readable by your user only (mode
+600); on Windows, the permissions of your user folder protect it.
 
 [CLAUDE RECOMMENDED – based on other users of a computer being able to see
 the command lines of running programs] Give the token with

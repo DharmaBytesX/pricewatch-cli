@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -90,8 +91,11 @@ func TestLoginStatusLogout(t *testing.T) {
 
 	path := h.env[config.EnvConfig]
 	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("config file %v, mode %v", err, info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Fatalf("config file mode %v: the token must be readable by its owner only", info.Mode().Perm())
 	}
 	f, _ := config.Load(path)
 	if f.Token != fakeapi.WriteToken || f.URL != "" {
