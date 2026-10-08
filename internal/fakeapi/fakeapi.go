@@ -1,10 +1,12 @@
 // Package fakeapi is an in-memory Pricewatch /api/v1 for tests. It follows
 // the server's rules the CLI depends on: API tokens and their scopes,
-// catalog search by words, discoveries, tracking, and the plan limit.
+// catalog search by words, discoveries, tracking, the plan limit, and the
+// webhook.
 // Pricewatch's own tests cover the real server (backend/internal/api).
 package fakeapi
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -27,8 +29,9 @@ type Token struct {
 
 // Tokens for tests.
 var (
-	WriteToken = "pwt_" + strings.Repeat("a", 48) // products:write
-	ReadToken  = "pwt_" + strings.Repeat("b", 48) // products:read
+	WriteToken   = "pwt_" + strings.Repeat("a", 48) // products:write
+	ReadToken    = "pwt_" + strings.Repeat("b", 48) // products:read
+	WebhookToken = "pwt_" + strings.Repeat("c", 48) // products:read and webhooks:write
 )
 
 // Server is the fake. Change its fields before the requests that use them.
@@ -52,6 +55,17 @@ type Server struct {
 	// Requests logs "METHOD /path body" for each request.
 	Requests []string
 
+	// WebhookURL is the user's webhook; nil when none is set.
+	WebhookURL *string
+	// WebhookSecret is the webhook's signing secret.
+	WebhookSecret string
+	// Deliveries are the webhook's deliveries, newest first.
+	Deliveries []api.WebhookDelivery
+	// TestStatus is how the webhook answers a test event: an HTTP status
+	// (0: 200), or -1 for no answer (TestError says why).
+	TestStatus int
+	TestError  string
+
 	discoveries  map[string]*discovery
 	productPolls int
 	nextID       int
@@ -72,6 +86,8 @@ func New() *Server {
 		Tokens: map[string]Token{
 			WriteToken: {Name: "laptop", Scopes: []string{"products:write"}, ExpiresAt: time.Date(2027, 1, 6, 12, 0, 0, 0, time.UTC)},
 			ReadToken:  {Name: "dashboard", Scopes: []string{"products:read"}, ExpiresAt: time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)},
+			WebhookToken: {Name: "automation", Scopes: []string{"products:read", "webhooks:write"},
+				ExpiresAt: time.Date(2027, 1, 6, 12, 0, 0, 0, time.UTC)},
 		},
 		Stores: []api.Store{
 			{Name: "amazon", DisplayName: "Amazon FR"},
@@ -111,6 +127,12 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusOK, me)
 	case route == "GET /stores":
 		reply(w, http.StatusOK, s.Stores)
+	case strings.HasPrefix(path, "/webhook"):
+		if hasScope(token, "webhooks:write") {
+			s.webhook(w, r, route, body)
+		} else {
+			denyScope(w, "webhooks:write")
+		}
 	case !s.allowed(w, token, r.Method):
 	case route == "GET /products":
 		s.productPolls++
@@ -136,24 +158,109 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 // allowed applies the scopes: reading needs products:read or
 // products:write, changing needs products:write.
 func (s *Server) allowed(w http.ResponseWriter, t Token, method string) bool {
-	has := func(scope string) bool {
-		for _, sc := range t.Scopes {
-			if sc == scope {
-				return true
-			}
-		}
-		return false
-	}
 	need := "products:read"
 	if method != http.MethodGet {
 		need = "products:write"
 	}
-	if has(need) || (need == "products:read" && has("products:write")) {
+	if hasScope(t, need) || (need == "products:read" && hasScope(t, "products:write")) {
 		return true
 	}
-	reply(w, http.StatusForbidden, map[string]string{
-		"error": "this API token does not have the " + need + " scope", "code": "insufficient_scope"})
+	denyScope(w, need)
 	return false
+}
+
+func hasScope(t Token, scope string) bool {
+	for _, sc := range t.Scopes {
+		if sc == scope {
+			return true
+		}
+	}
+	return false
+}
+
+func denyScope(w http.ResponseWriter, scope string) {
+	reply(w, http.StatusForbidden, map[string]string{
+		"error": "this API token does not have the " + scope + " scope", "code": "insufficient_scope"})
+}
+
+// webhook serves /webhook and its routes, which need webhooks:write.
+func (s *Server) webhook(w http.ResponseWriter, r *http.Request, route string, body map[string]any) {
+	noWebhook := map[string]string{"error": "no webhook is set"}
+	switch route {
+	case "GET /webhook":
+		reply(w, http.StatusOK, api.Webhook{URL: s.WebhookURL})
+	case "PUT /webhook":
+		address, _ := body["url"].(string)
+		if !strings.HasPrefix(address, "https://") {
+			reply(w, http.StatusBadRequest, map[string]string{"error": "the webhook address must start with https://"})
+			return
+		}
+		s.WebhookURL = &address
+		out := api.Webhook{URL: s.WebhookURL}
+		if s.WebhookSecret == "" {
+			s.WebhookSecret = s.secret()
+			out.Secret = s.WebhookSecret
+		}
+		reply(w, http.StatusOK, out)
+	case "DELETE /webhook":
+		s.WebhookURL, s.WebhookSecret = nil, ""
+		reply(w, http.StatusOK, map[string]bool{"removed": true})
+	case "POST /webhook/secret":
+		if s.WebhookURL == nil {
+			reply(w, http.StatusNotFound, noWebhook)
+			return
+		}
+		s.WebhookSecret = s.secret()
+		reply(w, http.StatusOK, map[string]string{"secret": s.WebhookSecret})
+	case "POST /webhook/test":
+		if s.WebhookURL == nil {
+			reply(w, http.StatusNotFound, noWebhook)
+			return
+		}
+		s.nextID++
+		created := time.Now().UTC().Truncate(time.Second)
+		d := api.WebhookDelivery{ID: int64(s.nextID), EventID: fmt.Sprintf("msg_test%08d", s.nextID), Type: "test",
+			Status: api.DeliverySent, Attempts: 1, CreatedAt: created}
+		switch status := s.TestStatus; {
+		case status < 0:
+			msg := s.TestError
+			d.Status, d.Error = api.DeliveryFailed, &msg
+		case status >= 200 && status < 300 || status == 0:
+			if status == 0 {
+				status = http.StatusOK
+			}
+			delivered := created.Add(120 * time.Millisecond)
+			d.ResponseStatus, d.DeliveredAt = &status, &delivered
+		default:
+			msg := fmt.Sprintf("the webhook answered %d", status)
+			d.Status, d.ResponseStatus, d.Error = api.DeliveryFailed, &status, &msg
+		}
+		s.Deliveries = append([]api.WebhookDelivery{d}, s.Deliveries...)
+		reply(w, http.StatusOK, map[string]any{"delivery": d})
+	case "GET /webhook/deliveries":
+		limit := 20
+		if v := r.URL.Query().Get("limit"); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil || n < 1 || n > 100 {
+				reply(w, http.StatusBadRequest, map[string]string{"error": "limit must be between 1 and 100"})
+				return
+			}
+			limit = n
+		}
+		out := append([]api.WebhookDelivery{}, s.Deliveries...)
+		if len(out) > limit {
+			out = out[:limit]
+		}
+		reply(w, http.StatusOK, map[string]any{"deliveries": out})
+	default:
+		reply(w, http.StatusNotFound, map[string]string{"error": "not found"})
+	}
+}
+
+// secret returns a new signing secret: whsec_ and 32 bytes in base64.
+func (s *Server) secret() string {
+	s.nextID++
+	return "whsec_" + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%032d", s.nextID)))
 }
 
 func (s *Server) searchCatalog(w http.ResponseWriter, r *http.Request) {

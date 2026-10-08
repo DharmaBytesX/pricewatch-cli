@@ -136,3 +136,34 @@ type DiscoveryOffer struct {
 	Price       *float64 `json:"price"` // euros
 	InStock     *bool    `json:"inStock"`
 }
+
+// Webhook is the address Pricewatch sends the user's alerts to.
+type Webhook struct {
+	URL *string `json:"url"` // nil when no webhook is set
+	// Secret signs the requests. The server sends it only when it creates
+	// it: for a new webhook, or a new secret.
+	Secret string `json:"secret,omitempty"`
+}
+
+// Webhook delivery statuses.
+const (
+	DeliveryPending = "pending" // queued, or waiting for a retry
+	DeliverySent    = "sent"
+	DeliveryFailed  = "failed"
+)
+
+// WebhookDelivery is one event sent, or being sent, to the webhook.
+type WebhookDelivery struct {
+	ID       int64  `json:"id"`
+	EventID  string `json:"eventId"` // the webhook-id header; the same on every retry
+	Type     string `json:"type"`    // price_drop, restock or test
+	AlertID  *int64 `json:"alertId"` // nil for a test event
+	Status   string `json:"status"`
+	Attempts int    `json:"attempts"`
+	// ResponseStatus is the HTTP status of the last answer; nil when none
+	// came (network error, timeout).
+	ResponseStatus *int       `json:"responseStatus"`
+	Error          *string    `json:"error"` // short reason; nil when sent
+	CreatedAt      time.Time  `json:"createdAt"`
+	DeliveredAt    *time.Time `json:"deliveredAt"`
+}

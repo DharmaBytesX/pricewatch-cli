@@ -5,8 +5,9 @@ Sign in with an API token, and check which one is used
 ### Synopsis
 
 Create an API token on Pricewatch's Settings page ("API tokens"): choose its
-access ("Read", or "Read and add") and when it expires. "pricewatch auth login"
-saves it in the configuration file.
+access ("Read", or "Read and add"; "Manage the webhook" for the webhook
+commands) and when it expires. "pricewatch auth login" saves it in the
+configuration file.
 
 The token is taken from, in order: the --token flag, the PRICEWATCH_TOKEN
 variable, then the configuration file.
