@@ -79,16 +79,16 @@ func TestSearchCatalogQuery(t *testing.T) {
 		_, _ = w.Write([]byte(`[]`))
 	}))
 	defer srv.Close()
-	if _, err := New(srv.URL, "", "ua", nil).SearchCatalog(context.Background(), "pokémon & co", "", 5); err != nil {
+	if _, err := New(srv.URL, "", "ua", nil).SearchCatalog(context.Background(), CatalogQuery{Text: "pokémon & co", Limit: 5}); err != nil {
 		t.Fatal(err)
 	}
 	if query != "limit=5&q=pok%C3%A9mon+%26+co" {
 		t.Fatal(query)
 	}
-	if _, err := New(srv.URL, "", "ua", nil).SearchCatalog(context.Background(), "", "tcg", 20); err != nil {
+	if _, err := New(srv.URL, "", "ua", nil).SearchCatalog(context.Background(), CatalogQuery{Type: "tcg", Store: "leclerc", Limit: 20}); err != nil {
 		t.Fatal(err)
 	}
-	if query != "limit=20&q=&type=tcg" {
+	if query != "limit=20&q=&store=leclerc&type=tcg" {
 		t.Fatal(query)
 	}
 }

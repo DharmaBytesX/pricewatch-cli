@@ -157,11 +157,11 @@ func (s *Server) allowed(w http.ResponseWriter, t Token, method string) bool {
 }
 
 func (s *Server) searchCatalog(w http.ResponseWriter, r *http.Request) {
-	q, ptype := r.URL.Query().Get("q"), r.URL.Query().Get("type")
+	q, ptype, store := r.URL.Query().Get("q"), r.URL.Query().Get("type"), r.URL.Query().Get("store")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	out := []api.CatalogProduct{}
 	for _, c := range s.Catalog {
-		if ptype != "" && c.Type != ptype {
+		if ptype != "" && c.Type != ptype || store != "" && !hasOffer(c, store) {
 			continue
 		}
 		if len(c.Offers) > 0 && match.AllWords(c.Name, q) && (limit == 0 || len(out) < limit) {
@@ -253,6 +253,15 @@ func (s *Server) remove(w http.ResponseWriter, id string) {
 		}
 	}
 	reply(w, http.StatusNotFound, map[string]string{"error": "product not found"})
+}
+
+func hasOffer(c api.CatalogProduct, store string) bool {
+	for _, o := range c.Offers {
+		if o.Marketplace == store {
+			return true
+		}
+	}
+	return false
 }
 
 // DiscoveryType returns the type the last discovery of name asked for.

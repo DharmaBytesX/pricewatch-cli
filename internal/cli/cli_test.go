@@ -406,7 +406,7 @@ func TestSearch(t *testing.T) {
 	if strings.Contains(lines[2], "✓") {
 		t.Fatalf("an untracked product is marked: %s", lines[2])
 	}
-	mustContain(t, lastGet(h.srv, "/api/v1/catalog"), "limit=20", "q=elden+ring")
+	mustContain(t, lastCatalogGet(h.srv), "limit=20", "q=elden+ring")
 
 	out, _, code = h.run("search", "--type", "smartphone", "--limit", "5")
 	expect(t, code, ExitOK, out, "")
@@ -414,7 +414,7 @@ func TestSearch(t *testing.T) {
 	if strings.Contains(out, "Elden") {
 		t.Fatalf("--type smartphone lists games:\n%s", out)
 	}
-	mustContain(t, lastGet(h.srv, "/api/v1/catalog"), "type=smartphone", "limit=5")
+	mustContain(t, lastCatalogGet(h.srv), "type=smartphone", "limit=5")
 
 	out, _, code = h.run("search", "iphone", "--json")
 	expect(t, code, ExitOK, out, "")
@@ -503,11 +503,43 @@ func TestRemoveSeveralMatches(t *testing.T) {
 	mustContain(t, errOut, "products:write")
 }
 
-// lastGet returns the last GET request to path the server received.
-func lastGet(srv *fakeapi.Server, path string) string {
+func TestSearchByStore(t *testing.T) {
+	h := newHarness(t).signedIn(fakeapi.ReadToken)
+	seedCatalog(h.srv) // every product has an Amazon FR and a Cdiscount offer
+	h.srv.Catalog = append(h.srv.Catalog, api.CatalogProduct{ID: "cat-mkw", Name: "Mario Kart World", Type: "video_game",
+		Offers: []api.CatalogOffer{{Marketplace: "micromania", URL: "https://micromania.example/mkw"}}})
+
+	// By code name: only Micromania's products, with Micromania's link.
+	out, errOut, code := h.run("search", "--store", "micromania")
+	expect(t, code, ExitOK, out, errOut)
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("micromania:\n%s", out)
+	}
+	mustContain(t, lines[0], "MICROMANIA LINK")
+	mustContain(t, lines[1], "Mario Kart World", "https://micromania.example/mkw")
+	mustContain(t, lastCatalogGet(h.srv), "store=micromania")
+
+	// By name, case and punctuation ignored.
+	out, _, code = h.run("search", "elden", "--store", "amazon fr")
+	expect(t, code, ExitOK, out, "")
+	mustContain(t, out, "AMAZON FR LINK", "Elden Ring (PS5)", "https://amazon.example/er5")
+	mustContain(t, lastCatalogGet(h.srv), "store=amazon")
+
+	_, errOut, code = h.run("search", "zelda", "--store", "micromania")
+	expect(t, code, ExitNotFound, "", errOut)
+	mustContain(t, errOut, "Micromania sells no catalog product matching “zelda”")
+
+	_, errOut, code = h.run("search", "--store", "fnac")
+	expect(t, code, ExitUsage, "", errOut)
+	mustContain(t, errOut, "unknown store “fnac”; the stores are: Amazon FR (amazon), Cdiscount (cdiscount), Micromania (micromania)")
+}
+
+// lastCatalogGet returns the last catalog search the server received.
+func lastCatalogGet(srv *fakeapi.Server) string {
 	log := srv.Log()
 	for i := len(log) - 1; i >= 0; i-- {
-		if strings.HasPrefix(log[i], "GET "+path) {
+		if strings.HasPrefix(log[i], "GET /api/v1/catalog") {
 			return log[i]
 		}
 	}

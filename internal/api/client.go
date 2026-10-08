@@ -66,12 +66,22 @@ func (c *Client) Products(ctx context.Context) ([]Product, error) {
 	return out, c.do(ctx, http.MethodGet, "/products", nil, &out)
 }
 
-// SearchCatalog lists the catalog products whose name has every word of
-// query, best match first. ptype keeps one product type; "" any.
-func (c *Client) SearchCatalog(ctx context.Context, query, ptype string, limit int) ([]CatalogProduct, error) {
-	q := url.Values{"q": {query}, "limit": {strconv.Itoa(limit)}}
-	if ptype != "" {
-		q.Set("type", ptype)
+// CatalogQuery selects catalog products.
+type CatalogQuery struct {
+	Text  string // every word of it in the name
+	Type  string // one product type; "" for any
+	Store string // sold by this store (its code name); "" for any
+	Limit int
+}
+
+// SearchCatalog lists the catalog products that match q, best match first.
+func (c *Client) SearchCatalog(ctx context.Context, cq CatalogQuery) ([]CatalogProduct, error) {
+	q := url.Values{"q": {cq.Text}, "limit": {strconv.Itoa(cq.Limit)}}
+	if cq.Type != "" {
+		q.Set("type", cq.Type)
+	}
+	if cq.Store != "" {
+		q.Set("store", cq.Store)
 	}
 	var out []CatalogProduct
 	return out, c.do(ctx, http.MethodGet, "/catalog?"+q.Encode(), nil, &out)

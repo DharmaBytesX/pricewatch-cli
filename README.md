@@ -121,8 +121,10 @@ stores showed: your Pricewatch plan sets how often they are checked (every
 name has every word of QUERY, best match first, with the number of stores
 that sell each one; ✓ marks the products you track. `--type` keeps one
 product type (`video_game`, `console`, `smartphone`, `laptop`, `tcg`,
-`other`), `--limit` sets how many are listed (20 by default, 100 at most).
-Without QUERY, it lists the catalog.
+`other`), `--store` keeps the products one store sells and adds that
+store's link (its name, such as `"E.Leclerc"`, or its code name, such as
+`leclerc`), `--limit` sets how many are listed (20 by default, 100 at
+most). Without QUERY, it lists the catalog.
 
 ```console
 $ pricewatch search "iphone 13 pro"
