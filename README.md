@@ -28,6 +28,7 @@ Contents:
 - [Search the catalog](#search-the-catalog)
 - [Add a product](#add-a-product)
 - [Stop tracking a product](#stop-tracking-a-product)
+- [Send alerts to your own service (webhook)](#send-alerts-to-your-own-service-webhook)
 - [Settings: address, token, configuration file](#settings-address-token-configuration-file)
 - [Exit codes](#exit-codes)
 - [Command reference](docs/commands/pricewatch.md)
@@ -74,6 +75,10 @@ In a script, give the token on standard input:
 | --- | --- | --- |
 | Read | `products:read` | `pricewatch prices`, `pricewatch search`, `pricewatch auth status` |
 | Read and add | `products:write` | also `pricewatch add` and `pricewatch remove` |
+| Manage the webhook | `webhooks:write` | `pricewatch webhook` and its commands |
+
+A token can have "Manage the webhook" together with "Read" or "Read and
+add".
 
 `pricewatch auth status` shows the account, the token and the address in
 use. `pricewatch auth logout` removes the saved token; the token works until
@@ -182,6 +187,51 @@ of your products match, pricewatch lists them and stops (exit code 2), unless
 one is named exactly PRODUCT. It asks before removing; without a terminal,
 `--yes` confirms.
 
+## Send alerts to your own service (webhook)
+
+Pricewatch can send each of your alerts (a price drop, a product back in
+stock) to an HTTPS address of yours, as a signed JSON `POST` request, in
+addition to Discord. Your service, or an automation tool that receives
+webhooks, then acts on it.
+
+```console
+$ pricewatch webhook set https://example.com/pricewatch
+Alerts are now sent to https://example.com/pricewatch.
+
+Signing secret: whsec_…
+Pricewatch signs every request with it (the webhook-signature header), so that
+your service can check that a request comes from Pricewatch. Copy it now:
+Pricewatch does not show it again. "pricewatch webhook new-secret" replaces it.
+Send a test event with: pricewatch webhook test
+
+$ pricewatch webhook test
+Sent: HTTP 200 in 120 ms (event msg_…).
+```
+
+The commands:
+
+- `pricewatch webhook` shows the address and the 10 latest deliveries: the
+  event type, the status (`sent`, `pending` while Pricewatch tries again,
+  `failed`), your service's answer (its HTTP status, or why there was none),
+  the number of attempts, and when.
+- `pricewatch webhook set URL` sends the alerts to URL. For a new webhook,
+  it prints the signing secret once; changing the address keeps the secret.
+- `pricewatch webhook test` sends a test event now and shows the answer. The
+  exit code is 1 when the event was not delivered.
+- `pricewatch webhook new-secret` replaces the signing secret and prints the
+  new one.
+- `pricewatch webhook remove` stops sending alerts to the webhook and
+  deletes its secret.
+
+`new-secret` and `remove` ask first; without a terminal, add `--yes`. In a
+script, `--json` prints Pricewatch's answer, so
+`pricewatch webhook set URL --json | jq -r .secret` gives the secret alone.
+
+These commands need a token with "Manage the webhook" access (scope
+`webhooks:write`). The event body, its fields, and how to check the
+signature are described on Pricewatch's docs page:
+<https://pricewatch.exe.xyz/docs#webhooks>.
+
 ## Settings: address, token, configuration file
 
 Each setting comes from the first of these that is set:
@@ -213,13 +263,13 @@ request to …" or "… refused the request before it reached Pricewatch".
 | 0 | Success |
 | 1 | The request failed: network, server, or an unexpected answer |
 | 2 | The command line is wrong, or a name matches several products |
-| 3 | Nothing matches: no tracked product, or no store sells the product |
+| 3 | Nothing matches: no tracked product, no store sells the product, or no webhook is set |
 | 4 | Refused: not signed in; token unknown, expired or revoked, or without the scope; plan limit |
 
 ## JSON output
 
-`prices`, `add` and `auth status` print JSON with `--json`, as Pricewatch's
-API returns it. Prices are in cents (`priceCents`); the API adds fields over
+`prices`, `search`, `add`, `auth status` and the `webhook` commands (except
+`remove`) print JSON with `--json`, as Pricewatch's API returns it. Prices are in cents (`priceCents`); the API adds fields over
 time and does not remove them. The API is described in the
 [Pricewatch README](https://github.com/DharmaBytesX/pricewatch#api-tokens-and-the-clis-api-apiv1).
 

@@ -25,4 +25,5 @@ page, then run "pricewatch auth login".
 * [pricewatch remove](pricewatch_remove.md)	 - Stop tracking a product and delete its price history
 * [pricewatch search](pricewatch_search.md)	 - Search Pricewatch's catalog
 * [pricewatch version](pricewatch_version.md)	 - Show the version of pricewatch
+* [pricewatch webhook](pricewatch_webhook.md)	 - Send your alerts to your own service, and check what was sent
 

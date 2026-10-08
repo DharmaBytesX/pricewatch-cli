@@ -112,6 +112,55 @@ func (c *Client) Discovery(ctx context.Context, id string) (*Discovery, error) {
 	return &out, c.do(ctx, http.MethodGet, "/discoveries/"+url.PathEscape(id), nil, &out)
 }
 
+// Webhook returns the user's webhook.
+func (c *Client) Webhook(ctx context.Context) (*Webhook, error) {
+	var out Webhook
+	return &out, c.do(ctx, http.MethodGet, "/webhook", nil, &out)
+}
+
+// SetWebhook sets or changes the webhook's address. The answer has the
+// signing secret when the webhook is new.
+func (c *Client) SetWebhook(ctx context.Context, address string) (*Webhook, error) {
+	var out Webhook
+	return &out, c.do(ctx, http.MethodPut, "/webhook", map[string]string{"url": address}, &out)
+}
+
+// RemoveWebhook removes the webhook and its secret. It succeeds when no
+// webhook is set.
+func (c *Client) RemoveWebhook(ctx context.Context) error {
+	return c.do(ctx, http.MethodDelete, "/webhook", nil, nil)
+}
+
+// NewWebhookSecret replaces the webhook's signing secret and returns the
+// new one.
+func (c *Client) NewWebhookSecret(ctx context.Context) (string, error) {
+	var out struct {
+		Secret string `json:"secret"`
+	}
+	err := c.do(ctx, http.MethodPost, "/webhook/secret", nil, &out)
+	return out.Secret, err
+}
+
+// TestWebhook sends a test event to the webhook now, and returns its
+// delivery: sent or failed.
+func (c *Client) TestWebhook(ctx context.Context) (*WebhookDelivery, error) {
+	var out struct {
+		Delivery WebhookDelivery `json:"delivery"`
+	}
+	err := c.do(ctx, http.MethodPost, "/webhook/test", nil, &out)
+	return &out.Delivery, err
+}
+
+// WebhookDeliveries lists the webhook's latest deliveries, newest first;
+// limit: 1 to 100.
+func (c *Client) WebhookDeliveries(ctx context.Context, limit int) ([]WebhookDelivery, error) {
+	var out struct {
+		Deliveries []WebhookDelivery `json:"deliveries"`
+	}
+	err := c.do(ctx, http.MethodGet, "/webhook/deliveries?limit="+strconv.Itoa(limit), nil, &out)
+	return out.Deliveries, err
+}
+
 // do sends a request to /api/v1 and decodes the JSON answer into out.
 func (c *Client) do(ctx context.Context, method, path string, body, out any) error {
 	var reader io.Reader
