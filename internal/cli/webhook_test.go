@@ -233,12 +233,15 @@ func TestWebhookRefusals(t *testing.T) {
 	}
 }
 
-func TestWebhookNeedsItsScope(t *testing.T) {
-	h := newHarness(t).signedIn(fakeapi.WriteToken)
-	for _, args := range [][]string{{"webhook"}, {"webhook", "set", "https://example.com/hook"}, {"webhook", "test"}} {
+func TestWebhookNeedsWriteToChange(t *testing.T) {
+	// A read token shows the webhook, and cannot change it.
+	h := newHarness(t).signedIn(fakeapi.ReadToken)
+	out, errOut, code := h.run("webhook")
+	expect(t, code, ExitOK, out, errOut)
+	for _, args := range [][]string{{"webhook", "set", "https://example.com/hook"}, {"webhook", "test"}} {
 		_, errOut, code := h.run(args...)
 		expect(t, code, ExitDenied, "", errOut)
-		mustContain(t, errOut, "does not have the webhooks:write scope", `"Manage the webhook" access`)
+		mustContain(t, errOut, "does not have the write scope", `"Write" access`)
 	}
 	if h.srv.WebhookURL != nil {
 		t.Fatal("set without the scope")
@@ -246,9 +249,9 @@ func TestWebhookNeedsItsScope(t *testing.T) {
 
 	// auth status says what the token may do.
 	h.signedIn(fakeapi.WebhookToken)
-	out, errOut, code := h.run("auth", "status")
+	out, errOut, code = h.run("auth", "status")
 	expect(t, code, ExitOK, out, errOut)
-	mustContain(t, out, "“automation” (environment): reads products and prices and manages the webhook")
+	mustContain(t, out, "“automation” (environment): write access: views and changes everything")
 }
 
 func TestWebhookOnAnOlderServer(t *testing.T) {
@@ -267,11 +270,9 @@ func TestScopeText(t *testing.T) {
 		scopes []string
 		want   string
 	}{
-		{[]string{"products:write"}, "reads and adds products"},
-		{[]string{"products:read"}, "reads products and prices"},
-		{[]string{"products:write", "webhooks:write"}, "reads and adds products and manages the webhook"},
-		{[]string{"webhooks:write"}, "manages the webhook; no access to products"},
-		{nil, "no access to products"},
+		{[]string{"write"}, "write access: views and changes everything"},
+		{[]string{"read"}, "read access: views everything"},
+		{nil, "no access"},
 	} {
 		if got := scopeText(c.scopes); got != c.want {
 			t.Errorf("scopeText(%v) = %q, want %q", c.scopes, got, c.want)

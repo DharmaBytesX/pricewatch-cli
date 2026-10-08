@@ -42,8 +42,8 @@ func TestErrors(t *testing.T) {
 		wantCode    string
 		wantMessage string
 	}{
-		{403, `{"error":"this API token does not have the products:write scope","code":"insufficient_scope"}`,
-			CodeInsufficientScope, "this API token does not have the products:write scope"},
+		{403, `{"error":"this API token does not have the write scope","code":"insufficient_scope"}`,
+			CodeInsufficientScope, "this API token does not have the write scope"},
 		{500, `<html>oops</html>`, "", "the server answered 500 Internal Server Error"},
 		{401, `invalid or missing authentication`, "", " refused the request before it reached Pricewatch (401 Unauthorized): the site may be private, or need a sign-in"},
 	}

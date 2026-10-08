@@ -87,7 +87,7 @@ func TestLoginStatusLogout(t *testing.T) {
 	h.stdin = fakeapi.WriteToken + "\n"
 	out, errOut, code := h.run("auth", "login", "--with-token")
 	expect(t, code, ExitOK, out, errOut)
-	mustContain(t, out, "Signed in to "+h.srv.URL+" as lex@example.com (Premium plan)", "Token “laptop”: reads and adds products, expires on 6 Jan 2027")
+	mustContain(t, out, "Signed in to "+h.srv.URL+" as lex@example.com (Premium plan)", "Token “laptop”: write access: views and changes everything, expires on 6 Jan 2027")
 
 	path := h.env[config.EnvConfig]
 	info, err := os.Stat(path)
@@ -105,7 +105,7 @@ func TestLoginStatusLogout(t *testing.T) {
 	out, errOut, code = h.run("auth", "status")
 	expect(t, code, ExitOK, out, errOut)
 	mustContain(t, out, h.srv.URL+" (environment)", "lex@example.com (Premium plan: any number of products, checked every minute)",
-		"“laptop” (config file): reads and adds products", "6 Jan 2027 (in 91 days)")
+		"“laptop” (config file): write access: views and changes everything", "6 Jan 2027 (in 91 days)")
 
 	out, errOut, code = h.run("auth", "logout")
 	expect(t, code, ExitOK, out, errOut)
@@ -122,7 +122,7 @@ func TestLoginWithPromptAndURLFlag(t *testing.T) {
 	out, errOut, code := h.run("auth", "login", "--url", h.srv.URL+"/")
 	expect(t, code, ExitOK, out, errOut)
 	mustContain(t, errOut, "Paste an API token")
-	mustContain(t, out, "Token “dashboard”: reads products and prices")
+	mustContain(t, out, "Token “dashboard”: read access: views everything")
 	if f, _ := config.Load(h.env[config.EnvConfig]); f.URL != h.srv.URL || f.Token != fakeapi.ReadToken {
 		t.Fatalf("saved %+v: the address given with --url is kept, without its trailing slash", f)
 	}
@@ -377,7 +377,7 @@ func TestAddRefusals(t *testing.T) {
 	seedCatalog(h.srv)
 	_, errOut, code := h.run("add", "iPhone 13 128 Go")
 	expect(t, code, ExitDenied, "", errOut)
-	mustContain(t, errOut, "does not have the products:write scope", `"Read and add" access`)
+	mustContain(t, errOut, "does not have the write scope", `"Write" access`)
 
 	h.signedIn(fakeapi.WriteToken)
 	h.srv.User.Limits.MaxProducts = 1
@@ -500,7 +500,7 @@ func TestRemoveSeveralMatches(t *testing.T) {
 	h.signedIn(fakeapi.ReadToken)
 	_, errOut, code = h.run("remove", "elden", "--yes")
 	expect(t, code, ExitDenied, "", errOut)
-	mustContain(t, errOut, "products:write")
+	mustContain(t, errOut, "write scope")
 }
 
 func TestSearchByStore(t *testing.T) {
