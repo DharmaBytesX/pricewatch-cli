@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+	"unicode/utf8"
 )
 
 // Euros writes a price in cents the French way: "1 299,99 €".
@@ -91,3 +92,52 @@ func (t *Table) Row(cells ...string) {
 
 // Flush writes the table.
 func (t *Table) Flush() error { return t.tw.Flush() }
+
+// Clean drops the characters of s that would let text from the server
+// control a terminal: the C0 controls but tab and newline (ESC starts the
+// escape sequences that move the cursor, set the window title or clear the
+// screen; a carriage return lets a line overwrite another), DEL, the C1
+// controls, and the bidirectional overrides that reorder what is shown.
+func Clean(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '\t' || r == '\n':
+			return r
+		case r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f):
+			return -1
+		case (r >= 0x202a && r <= 0x202e) || (r >= 0x2066 && r <= 0x2069):
+			return -1
+		}
+		return r
+	}, s)
+}
+
+// ForTerminal returns a writer to w that cleans what it writes (see Clean).
+// The CLI writes through it when its output is a terminal, so a product
+// name or a server message cannot drive the terminal; piped output is left
+// as it is.
+func ForTerminal(w io.Writer) io.Writer { return &termWriter{w: w} }
+
+type termWriter struct {
+	w    io.Writer
+	rest []byte // the start of a UTF-8 character cut by the last write
+}
+
+func (t *termWriter) Write(p []byte) (int, error) {
+	b := make([]byte, 0, len(t.rest)+len(p))
+	b = append(append(b, t.rest...), p...)
+	cut := len(b)
+	for i := len(b) - 1; i >= 0 && i >= len(b)-utf8.UTFMax; i-- {
+		if utf8.RuneStart(b[i]) {
+			if !utf8.FullRune(b[i:]) {
+				cut = i
+			}
+			break
+		}
+	}
+	t.rest = append([]byte(nil), b[cut:]...)
+	if _, err := io.WriteString(t.w, Clean(string(b[:cut]))); err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
