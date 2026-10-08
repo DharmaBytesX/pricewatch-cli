@@ -22,6 +22,7 @@ import (
 
 	"github.com/DharmaBytesX/pricewatch-cli/internal/api"
 	"github.com/DharmaBytesX/pricewatch-cli/internal/config"
+	"github.com/DharmaBytesX/pricewatch-cli/internal/render"
 	"github.com/DharmaBytesX/pricewatch-cli/internal/version"
 )
 
@@ -60,8 +61,8 @@ type App struct {
 func NewApp() *App {
 	return &App{
 		In:              os.Stdin,
-		Out:             os.Stdout,
-		Err:             os.Stderr,
+		Out:             terminalSafe(os.Stdout),
+		Err:             terminalSafe(os.Stderr),
 		Getenv:          os.Getenv,
 		Now:             time.Now,
 		StdinIsTerminal: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
@@ -71,6 +72,15 @@ func NewApp() *App {
 		},
 		PollInterval: 500 * time.Millisecond,
 	}
+}
+
+// terminalSafe writes to f through render.ForTerminal when f is a
+// terminal: text from the server cannot drive it. Piped output is as it is.
+func terminalSafe(f *os.File) io.Writer {
+	if term.IsTerminal(int(f.Fd())) {
+		return render.ForTerminal(f)
+	}
+	return f
 }
 
 // Execute runs the CLI with args (without the program name) and returns the

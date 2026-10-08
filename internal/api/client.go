@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -181,6 +182,9 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if c.token != "" {
+		if plainHTTP(c.baseURL) {
+			return &Error{Message: fmt.Sprintf("%s is a plain HTTP address: the API token would travel unencrypted; use its https:// address", c.baseURL)}
+		}
 		req.Header.Set(TokenHeader, c.token)
 	}
 	res, err := c.http.Do(req)
@@ -202,6 +206,22 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		return &Error{StatusCode: res.StatusCode, Message: fmt.Sprintf("%s did not answer with JSON; is it the Pricewatch address?", c.baseURL)}
 	}
 	return nil
+}
+
+// plainHTTP reports whether base is an http:// address of another computer:
+// the token is never sent there. A Pricewatch on this computer (localhost,
+// the tests' fake API) may use plain HTTP.
+func plainHTTP(base string) bool {
+	u, err := url.Parse(base)
+	if err != nil || !strings.EqualFold(u.Scheme, "http") {
+		return false
+	}
+	host := u.Hostname()
+	if strings.EqualFold(host, "localhost") {
+		return false
+	}
+	ip := net.ParseIP(host)
+	return ip == nil || !ip.IsLoopback()
 }
 
 // Error is an error answer from the server.
