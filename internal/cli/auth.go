@@ -22,9 +22,9 @@ func newAuthCommand(app *App, g *globals) *cobra.Command {
 		Use:   "auth",
 		Short: "Sign in with an API token, and check which one is used",
 		Long: `Create an API token on Pricewatch's Settings page ("API tokens"): choose its
-access ("Read", or "Read and add"; "Manage the webhook" for the webhook
-commands) and when it expires. "pricewatch auth login" saves it in the
-configuration file.
+access ("Read" to view everything, or "Write" to also add and remove
+products and manage the webhook) and when it expires. "pricewatch auth
+login" saves it in the configuration file.
 
 The token is taken from, in order: the --token flag, the PRICEWATCH_TOKEN
 variable, then the configuration file.`,
@@ -191,31 +191,21 @@ func planText(p api.Plan) string {
 	return fmt.Sprintf("%s, checked every %d minutes", products, int(every.Minutes()))
 }
 
-// Scopes an API token can hold.
+// The accesses an API token can have; write includes read.
 const (
-	scopeProductsRead  = "products:read"
-	scopeProductsWrite = "products:write"
-	scopeWebhooks      = "webhooks:write"
+	scopeRead  = "read"
+	scopeWrite = "write"
 )
 
 // scopeText says what a token may do.
 func scopeText(scopes []string) string {
-	var text string
 	switch {
-	case contains(scopes, scopeProductsWrite):
-		text = "reads and adds products"
-	case contains(scopes, scopeProductsRead):
-		text = "reads products and prices"
+	case contains(scopes, scopeWrite):
+		return "write access: views and changes everything"
+	case contains(scopes, scopeRead):
+		return "read access: views everything"
 	}
-	switch {
-	case contains(scopes, scopeWebhooks) && text == "":
-		return "manages the webhook; no access to products"
-	case contains(scopes, scopeWebhooks):
-		return text + " and manages the webhook"
-	case text == "":
-		return "no access to products"
-	}
-	return text
+	return "no access"
 }
 
 func daysLeft(t, now time.Time) string {

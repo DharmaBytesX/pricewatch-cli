@@ -13,9 +13,10 @@ Without a command, shows the webhook's address and its 10 latest
 deliveries: the event, whether it was sent, the answer of your service
 (its HTTP status, or why there was none), the number of attempts, and when.
 
-The webhook commands need an API token with "Manage the webhook" access
-(scope webhooks:write). The event body and how to check the signature are
-described on Pricewatch's docs page, at /docs#webhooks.
+Showing the webhook needs an API token with "Read" access; setting,
+testing or removing it needs "Write" access. The event body and how to
+check the signature are described on Pricewatch's docs page, at
+/docs#webhooks.
 
 ```
 pricewatch webhook [flags]

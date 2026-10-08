@@ -63,7 +63,7 @@ From the source: `make build` writes `./pricewatch`.
 $ pricewatch auth login
 Paste an API token (create one on Pricewatch's Settings page):
 Signed in to https://pricewatch.exe.xyz as you@example.com (Premium plan).
-Token “My laptop”: reads and adds products, expires on 6 Nov 2026.
+Token “My laptop”: write access: views and changes everything, expires on 6 Nov 2026.
 Saved in /home/you/.config/pricewatch/config.json.
 ```
 
@@ -73,12 +73,8 @@ In a script, give the token on standard input:
 
 | Access on the Settings page | Scope | What the token can do |
 | --- | --- | --- |
-| Read | `products:read` | `pricewatch prices`, `pricewatch search`, `pricewatch auth status` |
-| Read and add | `products:write` | also `pricewatch add` and `pricewatch remove` |
-| Manage the webhook | `webhooks:write` | `pricewatch webhook` and its commands |
-
-A token can have "Manage the webhook" together with "Read" or "Read and
-add".
+| Read | `read` | view everything: `pricewatch prices`, `pricewatch search`, `pricewatch webhook`, `pricewatch auth status` |
+| Write | `write` | also change things: `pricewatch add`, `pricewatch remove`, `pricewatch webhook set`, `test`, `new-secret` and `remove` |
 
 `pricewatch auth status` shows the account, the token and the address in
 use. `pricewatch auth logout` removes the saved token; the token works until
@@ -227,9 +223,9 @@ The commands:
 script, `--json` prints Pricewatch's answer, so
 `pricewatch webhook set URL --json | jq -r .secret` gives the secret alone.
 
-These commands need a token with "Manage the webhook" access (scope
-`webhooks:write`). The event body, its fields, and how to check the
-signature are described on Pricewatch's docs page:
+`pricewatch webhook` needs a token with "Read" access; the commands that
+change the webhook need "Write" access. The event body, its fields, and
+how to check the signature are described on Pricewatch's docs page:
 <https://pricewatch.exe.xyz/docs#webhooks>.
 
 ## Settings: address, token, configuration file

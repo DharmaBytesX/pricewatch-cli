@@ -210,10 +210,8 @@ func describe(err error) (int, string) {
 		return ExitFailure, err.Error()
 	case status == http.StatusUnauthorized:
 		return ExitDenied, err.Error() + `: create a token on Pricewatch's Settings page, then run "pricewatch auth login"`
-	case status == http.StatusForbidden && code == api.CodeInsufficientScope && strings.Contains(err.Error(), scopeWebhooks):
-		return ExitDenied, err.Error() + `: create a token with "Manage the webhook" access on Pricewatch's Settings page`
 	case status == http.StatusForbidden && code == api.CodeInsufficientScope:
-		return ExitDenied, err.Error() + `: create a token with "Read and add" access on Pricewatch's Settings page`
+		return ExitDenied, err.Error() + `: create a token with "Write" access on Pricewatch's Settings page`
 	case status == http.StatusForbidden:
 		return ExitDenied, err.Error()
 	case status == http.StatusNotFound:

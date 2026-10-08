@@ -29,9 +29,9 @@ type Token struct {
 
 // Tokens for tests.
 var (
-	WriteToken   = "pwt_" + strings.Repeat("a", 48) // products:write
-	ReadToken    = "pwt_" + strings.Repeat("b", 48) // products:read
-	WebhookToken = "pwt_" + strings.Repeat("c", 48) // products:read and webhooks:write
+	WriteToken   = "pwt_" + strings.Repeat("a", 48) // write
+	ReadToken    = "pwt_" + strings.Repeat("b", 48) // read
+	WebhookToken = "pwt_" + strings.Repeat("c", 48) // write
 )
 
 // Server is the fake. Change its fields before the requests that use them.
@@ -84,9 +84,9 @@ func New() *Server {
 		User: api.Me{ID: "user-1", Email: "lex@example.com", Plan: "premium",
 			Limits: api.Plan{Name: "premium", CheckIntervalSeconds: 60}},
 		Tokens: map[string]Token{
-			WriteToken: {Name: "laptop", Scopes: []string{"products:write"}, ExpiresAt: time.Date(2027, 1, 6, 12, 0, 0, 0, time.UTC)},
-			ReadToken:  {Name: "dashboard", Scopes: []string{"products:read"}, ExpiresAt: time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)},
-			WebhookToken: {Name: "automation", Scopes: []string{"products:read", "webhooks:write"},
+			WriteToken: {Name: "laptop", Scopes: []string{"write"}, ExpiresAt: time.Date(2027, 1, 6, 12, 0, 0, 0, time.UTC)},
+			ReadToken:  {Name: "dashboard", Scopes: []string{"read"}, ExpiresAt: time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)},
+			WebhookToken: {Name: "automation", Scopes: []string{"write"},
 				ExpiresAt: time.Date(2027, 1, 6, 12, 0, 0, 0, time.UTC)},
 		},
 		Stores: []api.Store{
@@ -127,13 +127,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusOK, me)
 	case route == "GET /stores":
 		reply(w, http.StatusOK, s.Stores)
-	case strings.HasPrefix(path, "/webhook"):
-		if hasScope(token, "webhooks:write") {
-			s.webhook(w, r, route, body)
-		} else {
-			denyScope(w, "webhooks:write")
-		}
 	case !s.allowed(w, token, r.Method):
+	case strings.HasPrefix(path, "/webhook"):
+		s.webhook(w, r, route, body)
 	case route == "GET /products":
 		s.productPolls++
 		if s.CheckAfterPolls > 0 && s.productPolls >= s.CheckAfterPolls {
@@ -155,14 +151,14 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// allowed applies the scopes: reading needs products:read or
-// products:write, changing needs products:write.
+// allowed applies the scopes: reading needs read or write, changing
+// needs write.
 func (s *Server) allowed(w http.ResponseWriter, t Token, method string) bool {
-	need := "products:read"
+	need := "read"
 	if method != http.MethodGet {
-		need = "products:write"
+		need = "write"
 	}
-	if hasScope(t, need) || (need == "products:read" && hasScope(t, "products:write")) {
+	if hasScope(t, need) || (need == "read" && hasScope(t, "write")) {
 		return true
 	}
 	denyScope(w, need)
@@ -183,7 +179,7 @@ func denyScope(w http.ResponseWriter, scope string) {
 		"error": "this API token does not have the " + scope + " scope", "code": "insufficient_scope"})
 }
 
-// webhook serves /webhook and its routes, which need webhooks:write.
+// webhook serves /webhook and its routes.
 func (s *Server) webhook(w http.ResponseWriter, r *http.Request, route string, body map[string]any) {
 	noWebhook := map[string]string{"error": "no webhook is set"}
 	switch route {
