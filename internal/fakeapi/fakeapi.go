@@ -298,7 +298,13 @@ func (s *Server) track(w http.ResponseWriter, catalogID string, body map[string]
 		p.TargetPriceCents = &cents
 	}
 	for _, o := range c.Offers {
-		p.Watches = append(p.Watches, api.Watch{ID: s.id("watch"), Marketplace: o.Marketplace, URL: o.URL, Active: true})
+		// As the API: a product watched new is not watched at the stores
+		// that sell used items only, and Amazon is a link, never read.
+		if (p.Condition == "" || p.Condition == "new") && (o.Marketplace == "leboncoin" || o.Marketplace == "vinted") {
+			continue
+		}
+		p.Watches = append(p.Watches, api.Watch{ID: s.id("watch"), Marketplace: o.Marketplace, URL: o.URL, Active: true,
+			LinkOnly: o.Marketplace == "amazon"})
 	}
 	s.Products = append([]api.Product{p}, s.Products...)
 	reply(w, http.StatusCreated, p)
@@ -401,7 +407,7 @@ func (s *Server) checkAll() {
 	for i := range s.Products {
 		for j := range s.Products[i].Watches {
 			w := &s.Products[i].Watches[j]
-			if w.LastCheckedAt == nil {
+			if w.LastCheckedAt == nil && !w.LinkOnly {
 				price := int64(10000 + 1000*j)
 				w.LastCheckedAt = &now
 				w.Latest = &api.Snapshot{PriceCents: &price, InStock: j%2 == 0, CapturedAt: now}

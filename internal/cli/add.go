@@ -15,11 +15,11 @@ import (
 )
 
 // Product types Pricewatch knows; "" lets the server guess from the name.
-var productTypes = []string{"video_game", "console", "smartphone", "laptop", "tcg", "other"}
+var productTypes = []string{"video_game", "console", "smartphone", "laptop", "vr_headset", "pc_component", "tv", "tcg", "other"}
 
 type addOptions struct {
 	condition string
-	maxPrice  string
+	target    string
 	ptype     string
 	id        string
 	search    bool
@@ -47,7 +47,7 @@ pricewatch first looks for NAME in Pricewatch's catalog:
 The first prices arrive a few seconds after the product is tracked; --wait
 shows them. Your plan limits how many products you track.`,
 		Example: `  pricewatch add "Elden Ring PS5"
-  pricewatch add "iPhone 13 128 Go" --condition any --max-price 450
+  pricewatch add "iPhone 13 128 Go" --condition any --target-price 450
   pricewatch add "Mario Kart World" --type video_game --wait
   pricewatch add --id 0b6f2c1e-1c4b-4f1e-9a51-7d3c2a1b9e00`,
 		Args: func(_ *cobra.Command, args []string) error {
@@ -62,7 +62,11 @@ shows them. Your plan limits how many products you track.`,
 	}
 	f := cmd.Flags()
 	f.StringVar(&o.condition, "condition", "new", "new, used, or any (used & new)")
-	f.StringVar(&o.maxPrice, "max-price", "", "alert only at or below this price in euros, e.g. 450 or 449,90")
+	f.StringVar(&o.target, "target-price", "", "alert only at or below this price in euros, e.g. 450 or 449,90")
+	// --max-price: the option's name until the website called it the target
+	// price (2026-10-09); kept for scripts, hidden from the help.
+	f.StringVar(&o.target, "max-price", "", "")
+	_ = f.MarkHidden("max-price")
 	f.StringVar(&o.ptype, "type", "", "type of a product the stores are searched for: "+strings.Join(productTypes, ", ")+" (default: guessed from NAME)")
 	f.StringVar(&o.id, "id", "", "track this catalog product ID instead of searching by NAME")
 	f.BoolVar(&o.search, "new", false, "search the stores for NAME even when the catalog has products that match")
@@ -125,16 +129,16 @@ func (app *App) add(ctx context.Context, g *globals, o *addOptions, name string)
 	return writeDetail(app.Out, *product, app.storeNames(ctx, client), app.Now(), false)
 }
 
-// trackRequest checks the condition and the maximum price.
+// trackRequest checks the condition and the target price.
 func (o *addOptions) trackRequest() (api.TrackRequest, error) {
 	req := api.TrackRequest{Condition: o.condition}
 	if !contains([]string{"new", "used", "any"}, o.condition) {
 		return req, usageError("--condition must be new, used or any")
 	}
-	if o.maxPrice != "" {
-		cents, err := ParseEuros(o.maxPrice)
+	if o.target != "" {
+		cents, err := ParseEuros(o.target)
 		if err != nil {
-			return req, usageError("--max-price: " + err.Error())
+			return req, usageError("--target-price: " + err.Error())
 		}
 		req.TargetPriceCents = &cents
 	}

@@ -34,7 +34,7 @@ pricewatch search [QUERY] [flags]
       --json           print the products as JSON, as the API returns them
       --limit int      how many products to list, 1 to 100 (default 20)
       --store string   only the products this store sells, e.g. "E.Leclerc" or leclerc
-      --type string    only this product type: video_game, console, smartphone, laptop, tcg, other
+      --type string    only this product type: video_game, console, smartphone, laptop, vr_headset, pc_component, tv, tcg, other
 ```
 
 ### Options inherited from parent commands

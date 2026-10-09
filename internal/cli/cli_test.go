@@ -296,11 +296,24 @@ func lastPost(srv *fakeapi.Server) string {
 func TestAddExactCatalogMatch(t *testing.T) {
 	h := newHarness(t).signedIn(fakeapi.WriteToken)
 	seedCatalog(h.srv)
-	out, errOut, code := h.run("add", "iphone 13", "128 GO", "--condition", "any", "--max-price", "449,90")
+	out, errOut, code := h.run("add", "iphone 13", "128 GO", "--condition", "any", "--target-price", "449,90")
 	expect(t, code, ExitOK, out, errOut)
 	mustContain(t, out, "Tracking iPhone 13 128 Go in 2 stores (Used & new, alerts at or below 449,90 €).",
 		`pricewatch prices "iPhone 13 128 Go"`)
 	mustContain(t, lastPost(h.srv), "POST /api/v1/catalog/cat-iphone/track", `"condition":"any"`, `"targetPriceCents":44990`)
+
+	// --max-price, the option's former name, still works for scripts.
+	h.srv.Products = nil
+	out, errOut, code = h.run("add", "iphone 13", "128 GO", "--max-price", "399")
+	expect(t, code, ExitOK, out, errOut)
+	mustContain(t, lastPost(h.srv), `"targetPriceCents":39900`)
+
+	// The types the website added are accepted.
+	for _, typ := range []string{"vr_headset", "pc_component", "tv"} {
+		h.srv.Products = nil
+		out, errOut, code = h.run("add", "iPhone 13 128 Go", "--type", typ)
+		expect(t, code, ExitOK, out, errOut)
+	}
 }
 
 func TestAddAmbiguousName(t *testing.T) {
@@ -360,8 +373,14 @@ func TestAddWaitsForTheFirstPrices(t *testing.T) {
 	h.srv.CheckAfterPolls = 3
 	out, errOut, code := h.run("add", "iPhone 13 128 Go", "--wait")
 	expect(t, code, ExitOK, out, errOut)
-	mustContain(t, out, "Tracking iPhone 13 128 Go in 2 stores (New).", "lowest in stock 100,00 € at Amazon FR",
-		"Amazon FR  100,00 €  in stock", "Cdiscount  110,00 €  out of stock")
+	// Amazon is a link, never checked: --wait does not wait for it.
+	mustContain(t, out, "Tracking iPhone 13 128 Go in 2 stores (New).", "no store has it in stock",
+		"Cdiscount  110,00 €  out of stock", "Amazon FR  —         price on Amazon FR  —")
+
+	// The summary counts the stock of the stores Pricewatch reads.
+	out, errOut, code = h.run("prices")
+	expect(t, code, ExitOK, out, errOut)
+	mustContain(t, out, "0 of 1 stores")
 
 	h.srv.Products = nil
 	out, errOut, code = h.run("add", "iPhone 13 128 Go", "--json")
@@ -551,8 +570,9 @@ func TestUsageErrors(t *testing.T) {
 	for _, args := range [][]string{
 		{"add"},
 		{"add", "x", "--condition", "both"},
+		{"add", "x", "--target-price", "cheap"},
+		{"add", "x", "--target-price", "0"},
 		{"add", "x", "--max-price", "cheap"},
-		{"add", "x", "--max-price", "0"},
 		{"add", "x", "--type", "toaster"},
 		{"add", "x", "--no-such-flag"},
 		{"auth", "status", "extra"},
