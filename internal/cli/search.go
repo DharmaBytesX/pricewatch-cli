@@ -14,11 +14,14 @@ import (
 
 // typeNames are the product types as the website names them.
 var typeNames = map[string]string{
-	"video_game": "Game",
-	"console":    "Console",
-	"smartphone": "Phone",
-	"laptop":     "Laptop",
-	"tcg":        "Cards",
+	"video_game":   "Game",
+	"console":      "Console",
+	"smartphone":   "Phone",
+	"laptop":       "Laptop",
+	"vr_headset":   "VR headset",
+	"pc_component": "PC parts",
+	"tv":           "TV",
+	"tcg":          "Cards",
 }
 
 func typeName(t string) string {

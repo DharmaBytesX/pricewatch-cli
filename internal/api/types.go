@@ -55,6 +55,9 @@ type Watch struct {
 	LastCheckedAt *time.Time `json:"lastCheckedAt"`
 	LastStatus    *string    `json:"lastStatus"`
 	Latest        *Snapshot  `json:"latestSnapshot"`
+	// LinkOnly: Pricewatch never reads this store (Amazon): the watch is
+	// a link, with no price, stock or check.
+	LinkOnly bool `json:"linkOnly,omitempty"`
 }
 
 // Snapshot is the latest price and stock read on a store's page.

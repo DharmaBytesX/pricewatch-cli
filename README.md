@@ -5,19 +5,19 @@
 works with an API token that you create on Pricewatch's Settings page.
 
 ```console
-$ pricewatch add "iPhone 13 128 Go" --condition any --max-price 450 --wait
+$ pricewatch add "iPhone 13 128 Go" --condition any --target-price 450 --wait
 Tracking iPhone 13 128 Go in 6 stores (Used & new, alerts at or below 450,00 €).
 
 iPhone 13 128 Go
 Used & new · alerts at or below 450,00 € · lowest in stock 239,99 € at Cdiscount
 
-STORE         PRICE     STOCK     CHECKED  LINK
-Cdiscount     239,99 €  in stock  1s ago   https://www.cdiscount.com/telephonie/…
-Easycash      249,99 €  in stock  1s ago   https://bons-plans.easycash.fr/smartphones/…
-Recommerce    299,90 €  in stock  0s ago   https://www.recommerce.com/fr/iphone-13-128go-rouge
-Cash Express  319,99 €  in stock  1s ago   https://www.cashexpress.fr/p-391284/…
-Carrefour     399,00 €  in stock  2s ago   https://www.carrefour.fr/p/iphone-13-128-go-noir-…
-Amazon FR     426,23 €  in stock  0s ago   https://www.amazon.fr/dp/B09V3KN99J
+STORE         PRICE     STOCK               CHECKED  LINK
+Cdiscount     239,99 €  in stock            1s ago   https://www.cdiscount.com/telephonie/…
+Easycash      249,99 €  in stock            1s ago   https://bons-plans.easycash.fr/smartphones/…
+Recommerce    299,90 €  in stock            0s ago   https://www.recommerce.com/fr/iphone-13-128go-rouge
+Cash Express  319,99 €  in stock            1s ago   https://www.cashexpress.fr/p-391284/…
+Carrefour     399,00 €  in stock            2s ago   https://www.carrefour.fr/p/iphone-13-128-go-noir-…
+Amazon FR     —         price on Amazon FR  —        https://www.amazon.fr/dp/B09V3KN99J
 ```
 
 Contents:
@@ -142,7 +142,7 @@ iPhone 13 Pro Max 256 Go  Phone  6                52299ad9-cc00-426e-96bc-784796
 
 ```sh
 pricewatch add "Elden Ring PS5"
-pricewatch add "iPhone 13 128 Go" --condition any --max-price 449,90
+pricewatch add "iPhone 13 128 Go" --condition any --target-price 449,90
 pricewatch add "Astro Bot PS5" --wait
 ```
 
@@ -163,7 +163,7 @@ pricewatch add "Astro Bot PS5" --wait
 | Option | What it does |
 | --- | --- |
 | `--condition new\|used\|any` | which offers count: new (default), used, or both |
-| `--max-price 450` | alerts only when a store's price is at or below 450 € |
+| `--target-price 450` | alerts only when a store's price is at or below 450 € |
 | `--wait` | waits for the first price of each store, and shows them |
 | `--json` | prints the tracked product as JSON |
 

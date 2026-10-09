@@ -167,10 +167,11 @@ func priceOf(w api.Watch) *int64 {
 }
 
 // waitingForFirstCheck reports whether a store of the product is active and
-// was never checked: its first check comes a few seconds after tracking.
+// was never checked: its first check comes a few seconds after tracking. A
+// link-only store (Amazon) is never checked.
 func waitingForFirstCheck(p api.Product) bool {
 	for _, w := range p.Watches {
-		if w.Active && w.LastCheckedAt == nil {
+		if w.Active && !w.LinkOnly && w.LastCheckedAt == nil {
 			return true
 		}
 	}
@@ -197,8 +198,14 @@ func writeSummary(out io.Writer, products []api.Product, names func(string) stri
 				lowest += " (out of stock)"
 			}
 		}
-		in := 0
+		// Out of the stores Pricewatch reads: a link-only store (Amazon) has
+		// no stock to count.
+		in, read := 0, 0
 		for _, w := range p.Watches {
+			if w.LinkOnly {
+				continue
+			}
+			read++
 			if w.Active && w.Latest != nil && w.Latest.InStock {
 				in++
 			}
@@ -207,7 +214,7 @@ func writeSummary(out io.Writer, products []api.Product, names func(string) stri
 		if lastChecked(p) == nil && waitingForFirstCheck(p) {
 			checked = "checking…"
 		}
-		t.Row(p.Name, lowest, store, fmt.Sprintf("%d of %d stores", in, len(p.Watches)), checked)
+		t.Row(p.Name, lowest, store, fmt.Sprintf("%d of %d stores", in, read), checked)
 	}
 	return t.Flush()
 }
@@ -239,6 +246,11 @@ func writeDetail(out io.Writer, p api.Product, names func(string) string, now ti
 	sort.SliceStable(watches, func(i, j int) bool { return less(&watches[i], &watches[j]) })
 	t := render.NewTable(out, "STORE", "PRICE", "STOCK", "CHECKED", "LINK")
 	for _, w := range watches {
+		if w.LinkOnly {
+			// Pricewatch never reads it: the price is on the store's page.
+			t.Row(names(w.Marketplace), "—", "price on "+names(w.Marketplace), "—", w.URL)
+			continue
+		}
 		t.Row(names(w.Marketplace), render.OptionalEuros(priceOf(w)), stockText(w), render.Ago(w.LastCheckedAt, now), w.URL)
 	}
 	return t.Flush()
